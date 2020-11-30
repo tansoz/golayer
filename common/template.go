@@ -73,7 +73,9 @@ func (this *TemplateImpl) ToString(data map[string]interface{}, charlist string)
 
 func (this *TemplateImpl) parse() {
 
-	matchRegexp := regexp.MustCompile("\\{ *([^ :]+) *: *([^ })]+)(\\([^\\]:]+\\))? *\\}")
+	matchRegexp := regexp.MustCompile("\\{ *([^ :]+) *: *([^ })]+)(\\( *([^\\]:]+) *\\))? *\\}")
+
+	specialCharRegexp := regexp.MustCompile("([\\\\{}\\[\\]()*+?])")
 
 	index := matchRegexp.FindAllStringSubmatchIndex(this.RawString, -1)
 
@@ -83,25 +85,31 @@ func (this *TemplateImpl) parse() {
 	for _, i := range index {
 
 		this.TemplateParts = append(this.TemplateParts, this.RawString[begin:i[0]])
-		tempRegexpStr += this.RawString[begin:i[0]]
+		tempRegexpStr += specialCharRegexp.ReplaceAllString(this.RawString[begin:i[0]], "\\$1")
 		begin = i[1]
 		if typeValue := this.DataTypeList.GetDataType(this.RawString[i[4]:i[5]]); typeValue != "" {
 			this.TemplateParts = append(this.TemplateParts, "{{%TEMPLATE%}}")
 			this.Args = append(this.Args, this.RawString[i[2]:i[3]])
 			if i[6] != -1 && i[7] != -1 {
-				tempRegexpStr += "(" + typeValue + "{" + this.RawString[i[6]:i[7]] + "}" + ")"
+
+				if this.RawString[i[8]] == '+' || this.RawString[i[8]] == '*' {
+					tempRegexpStr += "(" + typeValue + this.RawString[i[8]:i[9]] + ")"
+				} else {
+					tempRegexpStr += "(" + typeValue + "{" + this.RawString[i[8]:i[9]] + "}" + ")"
+				}
+
 			} else {
 				tempRegexpStr += "(" + typeValue + ")"
 			}
 		} else {
 			this.TemplateParts = append(this.TemplateParts, this.RawString[i[0]:i[1]])
-			tempRegexpStr += this.RawString[i[0]:i[1]]
+			tempRegexpStr += specialCharRegexp.ReplaceAllString(this.RawString[i[0]:i[1]], "\\$1")
 		}
 
 	}
 
 	this.TemplateParts = append(this.TemplateParts, this.RawString[begin:])
-	tempRegexpStr += this.RawString[begin:]
+	tempRegexpStr += specialCharRegexp.ReplaceAllString(this.RawString[begin:], "\\$1")
 
 	this.TemplateRegexp = regexp.MustCompile("^" + tempRegexpStr + "$")
 }
