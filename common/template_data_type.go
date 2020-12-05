@@ -36,7 +36,6 @@ func (this *TemplateDataTypeImpl) NewTemplate(pattern string) Template {
 		DataTypeList: this,
 		Args:         []string{},
 	}
-
 	tpl.parse()
 
 	return tpl
